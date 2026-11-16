@@ -10,13 +10,16 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.163.1",
     "httpx>=0.28.1",
+    "openai>=3.51.0",
     "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
+    "requests>=2.34.2",
     "uvicorn>=0.54.0",
 ]
 
-[project.scripts]
-fde-sanbox = "fde_sanbox:main"
+[tool.uv]
+package = false
+
 
 [build-system]
 requires = ["uv_build>=0.12.6,<0.13.0"]

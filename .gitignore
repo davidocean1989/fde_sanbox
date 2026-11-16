@@ -12,3 +12,8 @@ wheels/
 # pytest
 .pytest_cache/
 .coverage
+
+# 环境变量文件（含密钥，禁止提交）
+.env
+.env.local
+.env.*.local
