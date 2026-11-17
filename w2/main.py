@@ -1,11 +1,11 @@
 from openai import OpenAI
 from prompts import CLASSIFIER_SYSTEM_PROMPT,BARE_PROMPT_HASH
-from config import SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, SILICONFLOW_MODEL_DEEPSEEK, PROMPT_CHINESE,PROMPT_ENGLISH, PROMPT_EASY, SILICONFLOW_MODEL_QWEN,  PROMPT_CHINESE_B,PROMPT_TRAP, PROMPT_TEST1, PROMPT_TEST2,PROMPT_TEST3,PROMPT_TEST4
+from config import SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, SILICONFLOW_MODEL_DEEPSEEK, PROMPT_CHINESE,PROMPT_ENGLISH, PROMPT_EASY, SILICONFLOW_MODEL_QWEN,  PROMPT_CHINESE_B,PROMPT_TRAP, PROMPT_TEST1, PROMPT_TEST2,PROMPT_TEST3,PROMPT_TEST4,SYSTEM_PROMPT
 client = OpenAI(api_key=SILICONFLOW_API_KEY,base_url=SILICONFLOW_BASE_URL)
 response = client.chat.completions.create(
     temperature=0,
     model=SILICONFLOW_MODEL_DEEPSEEK,
-    messages=[{"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT}, {"role": "user", "content": PROMPT_TEST4} ],
+    messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": PROMPT_TEST4} ],
 )
 print(response.model)
 print("\n返回内容：\n",response.choices[0].message.content)
