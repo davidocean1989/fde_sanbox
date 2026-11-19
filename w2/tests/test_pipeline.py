@@ -27,6 +27,9 @@ def test_act1_clean_output_parse():
     assert r.final_ok is True
     assert r.repair_count == 0
     assert r.output["topic"] == "hulu"
+    assert r.error is None
+    assert r.error_kind is None
+    assert r.error_history == []
     assert len(calls) == 1
     assert len(calls[0]) == 2
 
@@ -43,6 +46,9 @@ def test_act2_bad_then_good_repairs():
     assert r.final_ok is True
     assert r.repair_count == 1
     assert r.output["topic"] == "hulu"
+    assert r.error is None
+
+    assert len(r.error_history) == 1
     assert len(calls) == 2
     assert len(calls[1]) == 4
     assert calls[1][2]["content"] == script_act2[0]
@@ -63,3 +69,6 @@ def test_act3_both_bad_raises():
     assert r.repair_count == 1
     assert r.output is None
     assert len(calls) == 2
+    assert r.error is not None
+    assert r.final_ok is False
+    assert len(r.error_history) == 2

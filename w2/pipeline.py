@@ -23,6 +23,7 @@ class Result:
     latency_ms: float
     output: dict | None
     error: str | None
+    error_history: list[str]
 
 
 class RepaireExhausted(Exception):
@@ -48,12 +49,14 @@ def extract_one(
     print("\n输入的内容是：" + probe)  # 每次输入都进行一次打印，看一下输入的内容
     started = time.perf_counter()
     last_kind, last_error = None, None
+    error_history: list[str] = []
     for attempt in range(max_repair + 1):  # +1：一次都不修也得先调一次
         raw = llm_complete(message, temperature=0)
         try:
             obj = parse(raw)
         except ParseError as e:
             last_kind, last_error = e.kind, e.message
+            error_history.append(last_error)
             message += [  # 原地追加，messages 变长
                 {"role": "assistant", "content": raw},  # 原始输出
                 {"role": "user", "content": f"{RETRY_HINT}\n\n校验错误：\n{e.message}"},
@@ -70,7 +73,8 @@ def extract_one(
             error_kind=None,
             latency_ms=round((time.perf_counter() - started) * 1000, 1),
             output=obj.model_dump(),
-            error=last_error,
+            error=None,
+            error_history=error_history,
         )
     raise RepaireExhausted(
         Result(  # 出口 3：耗尽，绝不 return None
@@ -82,6 +86,7 @@ def extract_one(
             latency_ms=round((time.perf_counter() - started) * 1000, 1),
             output=None,
             error=last_error,
+            error_history=error_history,
         )
     )
 
