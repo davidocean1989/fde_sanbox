@@ -23,7 +23,12 @@ def test_act1_clean_output_parse():
     fn, calls = fake_llm(script_act1)
     probe = "this is a probe"
     r = extract_one(probe, fn, max_repair=1)
-    assert type(r) == dict
+    # 出口 1：一次过，不该有第二次调用
+    assert r.final_ok is True
+    assert r.repair_count == 0
+    assert r.output["topic"] == "hulu"
+    assert len(calls) == 1
+    assert len(calls[0]) == 2
 
 
 def test_act2_bad_then_good_repairs():
@@ -34,13 +39,27 @@ def test_act2_bad_then_good_repairs():
     probe = "this is a probe"
     fn, calls = fake_llm(script_act2)
     r = extract_one(probe, fn, max_repair=1)
+    # 出口 2：修一次过；第二次调用必须带着坏输出回喂
+    assert r.final_ok is True
+    assert r.repair_count == 1
+    assert r.output["topic"] == "hulu"
+    assert len(calls) == 2
+    assert len(calls[1]) == 4
+    assert calls[1][2]["content"] == script_act2[0]
 
 
 def test_act3_both_bad_raises():
-    script_act3 = [
-        "{'topic': 'hulu',}",
-    ]
+    # script_act3 = [
+    #     "{'topic': 'hulu',}",
+    # ]
+    script_act3 = ["""{"theme":"hulu","confidence":0.9,"reason":"..."} """]
     probe = "this is a probe"
     fn, calls = fake_llm(script_act3)
-    with pytest.raises(RepaireExhausted):
+
+    with pytest.raises(RepaireExhausted) as exc:
         extract_one(probe, fn, max_repair=1)
+    r = exc.value.result
+    assert r.error_kind == "missing"
+    assert r.repair_count == 1
+    assert r.output is None
+    assert len(calls) == 2
