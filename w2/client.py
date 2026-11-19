@@ -11,9 +11,10 @@ def real_llm_complete(messages: list[dict], temperature: float):
         temperature=temperature,
         max_tokens=2000,
     )
+
     print(resp.model)
     print(
-        "\n使用量:\n",
+        "使用量:\n",
         "prompt_tokens:",
         resp.usage.prompt_tokens,
         "\n",
@@ -24,4 +25,4 @@ def real_llm_complete(messages: list[dict], temperature: float):
         resp.usage.total_tokens,
     )
 
-    return resp.choices[0].message.conatent or ""  # 空回复兜底，别把 None 交给 parse
+    return resp.choices[0].message.content or ""  # 空回复兜底，别把 None 交给 parse
