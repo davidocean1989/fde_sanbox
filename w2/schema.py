@@ -16,4 +16,4 @@ class TopicResult(BaseModel):
 
 
 # print(TopicResult.model_validate_json('{"topic":"live","confidence":0.3,"reason":"this is a true reason for the mage"}'))
-print(TopicResult.model_json_schema())  # Df. df
+# print(TopicResult.model_json_schema())  # Df. df
