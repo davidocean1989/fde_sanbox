@@ -4,7 +4,8 @@ from typing import Callable
 from pathlib import Path
 from pydantic import ValidationError
 from parse import parse, ParseError
-from prompts import CLASSIFIER_SYSTEM_PROMPT, RETRY_HINT
+from prompts import SYSTEM_PROMPT, RETRY_HINT, BARE_PROMPT
+from client import real_llm_complete  # 真 API 客户端，网络层重试归它管
 
 # TEMPERATURE = 0  # LLM04 三档：抽取/分类/结构化 = 0，写死不做旋钮
 PROBES_PATH = Path("probes.json")
@@ -41,9 +42,10 @@ def extract_one(
     run_tag: str = "default",
 ):
     message = [  # 唯一的可变状态，循环外只建一次
-        {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT},
+        {"role": "system", "content": BARE_PROMPT},
         {"role": "user", "content": probe},
     ]
+    print("\n输入的内容是：" + probe)  # 每次输入都进行一次打印，看一下输入的内容
     started = time.perf_counter()
     last_kind, last_error = None, None
     for attempt in range(max_repair + 1):  # +1：一次都不修也得先调一次
@@ -56,6 +58,7 @@ def extract_one(
                 {"role": "assistant", "content": raw},  # 原始输出
                 {"role": "user", "content": f"{RETRY_HINT}\n\n校验错误：\n{e.message}"},
             ]
+            print("异常处理：" + e.message)  # 将异常情况展示
 
             continue
 
@@ -104,10 +107,7 @@ def main(llm_complete: LlmFn, max_repair: int, run_tag: str):
         )
 
 
-if __name__ == "__&#8203;main__":
-    test_a = """```json\n{"theme":"rag"}\n```"""
-    main(test_a, max_repair=0, run_tag="baseline")
-    from client import real_llm_complete  # 真 API 客户端，网络层重试归它管
+if __name__ == "__main__":
 
     main(real_llm_complete, max_repair=0, run_tag="baseline")  # A 组：关掉回喂
     main(real_llm_complete, max_repair=1, run_tag="with_repair")  # B 组：全量
