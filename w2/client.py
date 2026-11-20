@@ -6,6 +6,15 @@ from contracts import LLMResult, Usage
 
 _client = OpenAI(api_key=SILICONFLOW_API_KEY, base_url=SILICONFLOW_BASE_URL)
 
+# T9 控制变量：四档统一关闭「思考模式」。
+# GLM-4.5-Air 是混合推理模型，默认会烧 reasoning tokens（实测 440 个 / 7.5s），
+# 不关就变成「轻量版 Hy4」，推理税 + 长尾延迟会污染成本与延迟两张表。
+# 对前三档（非推理模型）此参数是 no-op，已 1-token 实测兼容；四档都传同一个
+# extra_body，等于把「推理模式」统一钉在 OFF，模型档位仍是唯一自变量。
+# ⚠ 只有 extra_body={"enable_thinking": False} 生效；
+#   chat_template_kwargs 那种写法实测无效（仍返回 427 reasoning tokens）。
+T9_EXTRA_BODY = {"enable_thinking": False}
+
 
 def real_llm_complete(
     messages: list[dict], temperature: float, model: str | None = None
@@ -21,6 +30,7 @@ def real_llm_complete(
         messages=messages,
         temperature=temperature,
         max_tokens=5000,
+        extra_body=T9_EXTRA_BODY,
     )
 
     # 逐字段兜底：choices 可能为空，content 可能是 None，usage 可能整个缺失

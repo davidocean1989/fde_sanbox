@@ -6,6 +6,7 @@
 - 价格是会变的「分析时维度」，绝不写进落盘记录；落盘只记 token 这个实验事实。
   好处：查到新单价后直接改本表 + python pricing.py 重算，不用重跑任何一次 API。
 - 单价未核对的模型在价格表里置 None：报表显示 n/a，绝不静默按 0 元计入成本表。
+  注意区分「核对过就是 0 元」(Qwen2.5-7B Free) 与「价格未知」(None)——前者合法计价为 0。
 - 单位固定 /1000，不是 /1e6 —— 两者差 1000 倍，别混。
 - 本模块零依赖：不 import config / client / pipeline，import 它不会触发 API 配置。
 """
@@ -19,23 +20,36 @@ from pathlib import Path
 PRICE_UNIT = "CNY_PER_1K_TOKENS"
 PRICE_DIVISOR = 1000.0
 
-# T9 四档，按 input 单价从低到高排列（表格行序即此顺序）。
+# 本次 T9 的四档（有序 = 报表行序 = 按 input 单价升序）。
+# 与 MODEL_PRICING 解耦：价格表是「已知单价的全集」，这里只声明「这轮测谁」。
+# 换档只改这里 + config.py 常量 + pipeline.py 循环，价格字典不必跟着动。
+T9_MODELS: tuple[str, ...] = (
+    "Qwen/Qwen2.5-7B-Instruct",      # 免费档（官方 Free，0 元）
+    "zai-org/GLM-4.5-Air",           # 低价 MoE，必须关闭 thinking
+    "deepseek-ai/DeepSeek-V3",
+    "Qwen/Qwen2.5-72B-Instruct",
+)
+
 # 模型全名 (config 常量) : (input 单价, output 单价)；None = 单价未核对
 MODEL_PRICING: dict[str, tuple[float, float] | None] = {
-    # 便宜档 7B：官方价目表未列单价，不臆造数字，报表 n/a。
-    # 查到后把 None 换成 (p_in, p_out)，改完 python pricing.py 重算即可，不用重跑实验。
-    "Qwen/Qwen2.5-7B-Instruct": None,
-    "deepseek-ai/DeepSeek-V3": (0.002000, 0.008000),          # 671B MoE / 激活 37B
-    "Qwen/Qwen2.5-72B-Instruct": (0.004130, 0.004130),       # 72B 稠密
-    # 旗舰 770B MoE / 激活约 49B，1M 上下文。价目来自控制台「在线推理」与官网 pricing 页：
-    #   input 0.006000 / output 0.018000 / 缓存命中 0.000300 （元 / K Tokens）
-    # ⚠ 缓存命中价当前不参与计算：本表只按 prompt×P_in + completion×P_out 计价，
-    #   usage.prompt_tokens_details.cached_tokens 未拆分；若将来命中率高，实际成本会低于本表。
+    # 官方标记 (Free)，2026-11-20 控制台核对：输入 / 输出均 ¥0.000000 / K Tokens。
+    # ⚠ 0 元 ≠ 缺失：这是核对过的真实价格，与「不知道价格而置 None」是两回事。
+    #   免费档的真实代价在质量侧（unknown 40% 要转人工/二级处理），不进 T9 的 API 账单。
+    "Qwen/Qwen2.5-7B-Instruct": (0.000000, 0.000000),
+    "zai-org/GLM-4.5-Air": (0.001000, 0.006000),         # 106B MoE / 128K
+    # 口径统一：各档 prompt_tokens_details.cached_tokens 一律不拆分、按全价计。
+    # GLM 冒烟实测命中 320 cached tokens，官方价目表无「缓存命中」行，故报表是保守上界；
+    # 四档都按全价算，横向对比仍成立（真实账单可能略低于本表）。
+    "deepseek-ai/DeepSeek-V3": (0.002000, 0.008000),     # 671B MoE / 激活 37B
+    "Qwen/Qwen2.5-72B-Instruct": (0.004130, 0.004130),   # 72B 稠密
+    # 2026-11-20 已从 T9 剔除（推理模型跑短分类属任务错配），保留在价格表里
+    # 只为让旧留档 probes_t9_20261120_with_hy4.jsonl 仍可重算审计，报表不显示这一行。
     "tencent/Hy4-preview": (0.006000, 0.018000),
 }
 
 _SHORT = {
     "Qwen/Qwen2.5-7B-Instruct": "Qwen2.5-7B",
+    "zai-org/GLM-4.5-Air": "GLM-4.5-Air",
     "deepseek-ai/DeepSeek-V3": "DeepSeek-V3",
     "Qwen/Qwen2.5-72B-Instruct": "Qwen2.5-72B",
     "tencent/Hy4-preview": "Hy4-preview",
@@ -175,7 +189,7 @@ def _fmt(v, spec: str) -> str:
 
 
 def print_report(rows: list[dict] | None = None, path: Path = Path("probes.jsonl")) -> dict:
-    """打印四档成本对比表。固定四行，没跑的档显示「未跑」。"""
+    """打印四档成本对比表。固定 T9_MODELS 四行，没跑的档显示「未跑」。"""
     s = summarize(_read_jsonl(Path(path)) if rows is None else rows)
     print("\n" + "=" * 96)
     print(f"T9 四档成本对比 | 单位 {PRICE_UNIT} | 月 / 年按日均 {DAILY_CALLS} 次折算")
@@ -185,7 +199,8 @@ def print_report(rows: list[dict] | None = None, path: Path = Path("probes.jsonl
         f"{'year-CNY':>10}{'acc':>7}{'unknown':>9}{'1st-pass':>10}{'lat-ms':>9}{'p95-ms':>9}"
     )
     print("-" * 96)
-    for model, short in _SHORT.items():
+    for model in T9_MODELS:
+        short = _SHORT[model]
         if model not in s:
             print(f"{short:<16}{'未跑':>4}")
             continue
@@ -198,7 +213,7 @@ def print_report(rows: list[dict] | None = None, path: Path = Path("probes.jsonl
             f"{acc:>7}{d['unknown_rate']:>9.0%}{d['first_pass_rate']:>10.0%}"
             f"{d['lat_mean_ms']:>9.0f}{d['lat_p95_ms']:>9.0f}"
         )
-    unpriced = [m for m, p in MODEL_PRICING.items() if p is None]
+    unpriced = [m for m in T9_MODELS if MODEL_PRICING.get(m) is None]
     print("-" * 96)
     if unpriced:
         print(f"⚠ 单价未核对，成本列 n/a：{', '.join(unpriced)}")
@@ -206,6 +221,7 @@ def print_report(rows: list[dict] | None = None, path: Path = Path("probes.jsonl
         print("  改完直接 python pricing.py 重算即可，不用重跑实验。")
     print("口径：单条均价 = (Σprompt×P_in + Σcompletion×P_out)/1000；")
     print("      正确率对照 gold.json；P95 取排序后 ceil(0.95×N)-1，不是均值。")
+    print("⚠ 四档统一关闭推理模式（enable_thinking=False，见 client.py），模型档位仍是唯一自变量。")
     print("⚠ T9 是强 prompt 下的乐观下界：生产需乘 (1+E[修复次数])，回喂见 T10。")
     print("⚠ acc / unknown / 1st-pass 属质量表：格式一次通过率是控制变量校验列，不参与排名。")
     print("=" * 96 + "\n")

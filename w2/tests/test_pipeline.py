@@ -132,9 +132,9 @@ def test_four_models_are_distinguishable_in_rows():
     """T9 四档 80 行落进同一个 jsonl，靠 llm_model 分组；prompt_hash 必须全同。"""
     names = [
         "Qwen/Qwen2.5-7B-Instruct",
+        "zai-org/GLM-4.5-Air",          # 替 Hy4，须关 thinking
         "deepseek-ai/DeepSeek-V3",
         "Qwen/Qwen2.5-72B-Instruct",
-        "tencent/Hy4-preview",  # 真混元旗舰，名实相符
     ]
     rows = []
     for name in names:
@@ -158,3 +158,14 @@ def test_temperature_is_passed_through():
 
     extract_one("probe", _fn, max_repair=0, temperature=0.8)
     assert seen == [0.8]
+
+
+def test_temperature_is_persisted_in_result():
+    """温度是自变量，必须显式落盘；否则 0 / 0.3 / 0.8 三批从数据里分不开。"""
+    fn, _ = fake_llm([GOOD])
+    r = extract_one("probe", fn, max_repair=0, temperature=0.3)
+    assert r.temperature == 0.3
+    assert asdict(r)["temperature"] == 0.3
+    # 三个出口（一次过 / 修一次过 / 耗尽）都得带，主实验不传时是 0.0
+    fn0, _ = fake_llm([GOOD])
+    assert extract_one("probe", fn0, max_repair=0).temperature == 0.0

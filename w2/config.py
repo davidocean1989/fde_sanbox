@@ -54,13 +54,20 @@ SILICONFLOW_MODEL_QWEN = os.getenv(
 )  # input:0.004130/ K Tokens output:0.004130/ K Tokens  属于 72B
 SILICONFLOW_MODEL_QWEN7B = os.getenv(
     "SILICONFLOW_MODEL_QWEN7B", "Qwen/Qwen2.5-7B-Instruct"
-)  # ⚠ 单价未核对：官方价目表未列，pricing.py 里置 None（报表 n/a，不冒充 0 元）
+)  # 官方标记 (Free)：input 0.000000 / output 0.000000 元 / K Tokens（2026-11-20 控制台核对）
 
-# 腾讯混元 Hy4 preview：770B 总参 / 每 token 激活约 49B，1M 上下文、64k 最大输出。
-# 价目来自控制台「在线推理」(2026-11-20) 与官网 pricing 页，单位 元 / K Tokens：
-#   input 0.006000、output 0.018000、缓存命中 0.000300（= ¥6 / ¥18 / ¥0.30 每 M Tokens）
-# 名实相符：常量名带 HY4，实体就是混元；不再让 HUNYUAN 常量指向 Qwen。
-SILICONFLOW_MODEL_HUANYUAN_HY4 = "tencent/Hy4-preview"
+# 替 Hy4 的新档：智谱 GLM-4.5-Air，106B MoE / 128K 上下文，标签含「快速响应」。
+# 价目来自控制台「在线推理」(2026-11-20)：input 0.001000 / output 0.006000 元 / K Tokens。
+# ⚠ 它是混合推理模型，默认会思考（实测 440 reasoning tokens / 7.5s）。T9 必须统一关闭
+#   推理模式（client.py 的 extra_body），否则会重演 Hy4 的推理税，四档不可比。
+SILICONFLOW_MODEL_GLM45AIR = os.getenv(
+    "SILICONFLOW_MODEL_GLM45AIR", "zai-org/GLM-4.5-Air"
+)
+
+# 2026-11-20 剔除 tencent/Hy4-preview（770B MoE 推理旗舰）：
+#   理由不是「数据难看」，是任务错配 —— 20 条短分类用不到 1M 上下文与复杂推理。
+#   实测 23.7× 成本 / P95 75.6s / 正确率反而 80%。旧 80 行留档在
+#   probes_t9_20261120_with_hy4.jsonl，供 W5 报告引用，不删除、不静默替换。
 PROMPT_CHINESE = "我是一个地理学研究者。请计算北京天安门（北纬 39.9°、东经 116.4°）的对跖点。答三件事：1. 该对跖点的经纬度坐标（保留两位小数）2. 该点大致位于哪个海域或陆地，靠近哪个国家3. 写出你的计算过程：经度、纬度分别如何变换。顺序是：先给坐标结论，再给计算过程，最后用一到两句话，说明你判断该点地理位置的依据。"
 PROMPT_CHINESE_B = "我是一个地理学研究者。请计算北京天安门（北纬 39.9°、东经 116.4°）的对跖点。答三件事：1. 该对跖点的经纬度坐标（保留两位小数）2. 该点大致位于哪个海域或陆地，靠近哪个国家3. 写出你的计算过程：经度、纬度分别如何变换。顺序是：先给坐标结论，再给计算过程，最后用一到两句话，说明你判断该点地理位置的依据。\n用 50 字以内回答"
 

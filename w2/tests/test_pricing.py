@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from pricing import (
     MODEL_PRICING,
+    T9_MODELS,
     PRICE_UNIT,
     PRICE_DIVISOR,
     cost,
@@ -75,19 +76,27 @@ def test_summarize_dedup_keeps_last_run():
     assert d["accuracy"] is None  # gold 不存在时正确率留空，不假装 0
 
 
-def test_four_models_registered_and_names_match_entities():
-    """四档名实相符：Qwen7B / DeepSeek / Qwen72B / 混元 Hy4 各占一行，7B 未核价。"""
-    assert set(MODEL_PRICING) == {
+def test_t9_models_match_entities_and_are_all_priced():
+    """本轮四档名实相符，且四档单价全部核对过（不再有 None / n/a）。"""
+    assert T9_MODELS == (
         "Qwen/Qwen2.5-7B-Instruct",
+        "zai-org/GLM-4.5-Air",
         "deepseek-ai/DeepSeek-V3",
         "Qwen/Qwen2.5-72B-Instruct",
-        "tencent/Hy4-preview",
-    }
-    assert MODEL_PRICING["Qwen/Qwen2.5-7B-Instruct"] is None  # 不臆造单价
+    )
+    assert all(m in MODEL_PRICING and MODEL_PRICING[m] is not None for m in T9_MODELS)
+    # 7B 是官方 Free：核对过的真实 0 元，不是「价格未知」的 None
+    assert MODEL_PRICING["Qwen/Qwen2.5-7B-Instruct"] == (0.000000, 0.000000)
+
+
+def test_hy4_excluded_from_t9_but_kept_for_audit():
+    """Hy4 已剔除出本轮四档，但价格留在字典里，旧留档文件仍可重算。"""
+    assert "tencent/Hy4-preview" not in T9_MODELS
+    assert MODEL_PRICING["tencent/Hy4-preview"] == (0.006000, 0.018000)
 
 
 def test_hy4_price_matches_official_console():
-    """Hy4 单价来自控制台截图 + 官网 pricing 页（¥6/¥18 每 M = 0.006/0.018 每 K）。"""
+    """[审计] Hy4 单价来自控制台截图 + 官网 pricing 页（¥6/¥18 每 M = 0.006/0.018 每 K）。"""
     assert MODEL_PRICING["tencent/Hy4-preview"] == (0.006000, 0.018000)
     # 用冒烟实测 token 对账：978 input / 841 output（含 740 reasoning）
     assert cost(978, 841, MODEL_PRICING["tencent/Hy4-preview"]) == pytest.approx(
@@ -95,18 +104,28 @@ def test_hy4_price_matches_official_console():
     )
 
 
-def test_input_price_dominates_cheapness_order():
-    """四档中已核价的 3 档：分类任务 input 占 ~95%，便宜序由 input 单价决定
-    DeepSeek(0.002) < Qwen72B(0.00413) < Hy4(0.006)。7B 未核价不参与排序。"""
+def test_glm_price_matches_console():
+    """GLM-4.5-Air 单价来自 2026-11-20 控制台「在线推理」：0.001 / 0.006 元 / K。"""
+    assert MODEL_PRICING["zai-org/GLM-4.5-Air"] == (0.001000, 0.006000)
+    # 关思考后冒烟实测 1005 input / 42 output
+    assert cost(1005, 42, MODEL_PRICING["zai-org/GLM-4.5-Air"]) == pytest.approx(
+        (1005 * 0.001 + 42 * 0.006) / 1000, abs=1e-9
+    )
+
+
+def test_price_ladder_is_monotonic():
+    """换掉 Hy4 后四档第一次构成单调价格阶梯（input 单价 0 → 0.001 → 0.002 → 0.00413）。
+    分类任务 input 占 ~95%，所以用同一组 token 量验证总成本序即可。"""
     p, c = 960, 43
-    ds = cost(p, c, MODEL_PRICING["deepseek-ai/DeepSeek-V3"])
-    qw = cost(p, c, MODEL_PRICING["Qwen/Qwen2.5-72B-Instruct"])
-    hy = cost(p, c, MODEL_PRICING["tencent/Hy4-preview"])
-    assert ds < qw < hy
+    vals = [cost(p, c, MODEL_PRICING[m]) for m in T9_MODELS]
+    assert vals == sorted(vals)
+    assert vals[0] == 0.0                     # 7B 免费档
+    assert len({round(v, 9) for v in vals}) == 4  # 四档互不重合
 
 
-def test_unpriced_model_is_not_silently_free():
-    """单价未核对的档：row_cost=None、成本列全 None，绝不静默按 0 元算进成本表。"""
+def test_free_model_is_priced_zero_not_na():
+    """0 元 ≠ 缺失：核对过的免费档 row_cost 返回 0.0，成本列显示 0.000000 而非 n/a。
+    真正的「未知模型 / 缺 token 字段」仍必须返回 None（见上面两条用例）。"""
     cheap = "Qwen/Qwen2.5-7B-Instruct"
     row = {
         "llm_model": cheap, "run_tag": f"{cheap}/t9", "probe_id": 0,
@@ -114,8 +133,7 @@ def test_unpriced_model_is_not_silently_free():
         "final_ok": True, "repair_count": 0, "latency_ms": 3000.0,
         "output": {"topic": "hulu"},
     }
-    assert MODEL_PRICING[cheap] is None
-    assert row_cost(row) is None
+    assert row_cost(row) == 0.0
     d = summarize([row], gold_path=Path("/nonexistent/gold.json"))[cheap]
-    assert d["priced_n"] == 0
-    assert d["avg_cost"] is None and d["month_cost"] is None and d["year_cost"] is None
+    assert d["priced_n"] == 1
+    assert d["avg_cost"] == 0.0 and d["month_cost"] == 0.0 and d["year_cost"] == 0.0
