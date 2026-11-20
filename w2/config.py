@@ -42,11 +42,25 @@ def _require(name: str) -> str:
 
 
 SILICONFLOW_API_KEY = _require("SILICONFLOW_API_KEY")
-SILICONFLOW_BASE_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
+SILICONFLOW_BASE_URL = os.getenv(
+    "SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"
+)
 SILICONFLOW_BASE_URL_ALL = f"{SILICONFLOW_BASE_URL}/chat/completions"
-SILICONFLOW_MODEL_DEEPSEEK = os.getenv("SILICONFLOW_MODEL_DEEPSEEK", "deepseek-ai/DeepSeek-V3")
-SILICONFLOW_MODEL_QWEN = os.getenv("SILICONFLOW_MODEL_QWEN", "Qwen/Qwen2.5-7B-Instruct")
+SILICONFLOW_MODEL_DEEPSEEK = os.getenv(
+    "SILICONFLOW_MODEL_DEEPSEEK", "deepseek-ai/DeepSeek-V3"
+)  # input: 0.002000/ K Tokens    output:0.008000/ K Tokens. 属于 671B 激活37B
+SILICONFLOW_MODEL_QWEN = os.getenv(
+    "SILICONFLOW_MODEL_QWEN", "Qwen/Qwen2.5-72B-Instruct"
+)  # input:0.004130/ K Tokens output:0.004130/ K Tokens  属于 72B
+SILICONFLOW_MODEL_QWEN7B = os.getenv(
+    "SILICONFLOW_MODEL_QWEN7B", "Qwen/Qwen2.5-7B-Instruct"
+)  # ⚠ 单价未核对：官方价目表未列，pricing.py 里置 None（报表 n/a，不冒充 0 元）
 
+# 腾讯混元 Hy4 preview：770B 总参 / 每 token 激活约 49B，1M 上下文、64k 最大输出。
+# 价目来自控制台「在线推理」(2026-11-20) 与官网 pricing 页，单位 元 / K Tokens：
+#   input 0.006000、output 0.018000、缓存命中 0.000300（= ¥6 / ¥18 / ¥0.30 每 M Tokens）
+# 名实相符：常量名带 HY4，实体就是混元；不再让 HUNYUAN 常量指向 Qwen。
+SILICONFLOW_MODEL_HUANYUAN_HY4 = "tencent/Hy4-preview"
 PROMPT_CHINESE = "我是一个地理学研究者。请计算北京天安门（北纬 39.9°、东经 116.4°）的对跖点。答三件事：1. 该对跖点的经纬度坐标（保留两位小数）2. 该点大致位于哪个海域或陆地，靠近哪个国家3. 写出你的计算过程：经度、纬度分别如何变换。顺序是：先给坐标结论，再给计算过程，最后用一到两句话，说明你判断该点地理位置的依据。"
 PROMPT_CHINESE_B = "我是一个地理学研究者。请计算北京天安门（北纬 39.9°、东经 116.4°）的对跖点。答三件事：1. 该对跖点的经纬度坐标（保留两位小数）2. 该点大致位于哪个海域或陆地，靠近哪个国家3. 写出你的计算过程：经度、纬度分别如何变换。顺序是：先给坐标结论，再给计算过程，最后用一到两句话，说明你判断该点地理位置的依据。\n用 50 字以内回答"
 
@@ -54,18 +68,21 @@ PROMPT_ENGLISH = "As a geographer, I'm curious about the antipodal point of Tian
 PROMPT_EASY = "how to check if a Python object is an instance of a class?"
 
 
-PROMPT_TRAP = "红烧肉家常做法：五花肉 500 克切块，冷水下锅焯水，冰糖小火炒出糖色，下肉翻炒上色，加料酒、生抽，小火焖 40 分钟收汁。"""
+PROMPT_TRAP = (
+    "红烧肉家常做法：五花肉 500 克切块，冷水下锅焯水，冰糖小火炒出糖色，下肉翻炒上色，加料酒、生抽，小火焖 40 分钟收汁。"
+    ""
+)
 PROMPT_TEST1 = "自建 RAG 知识库：完整方案：制定日期 2026-09-18，适用对象为重度 ChatGPT 用户、域名托管在 Cloudflare、长期运维。RAG 框架采用 Dify（知识库管理）+ Qdrant（向量库）+ 自写 FastMCP Server（给 ChatGPT 用）三件套。通过 Cloudflare Tunnel 出网建链，服务器 0 开放入站端口、源站 IP 永不暴露，数据安全采用 3-2-1 备份策略。"
-PROMPT_TEST2= "FDE-执行02-12周日程总表：全职压缩版：12 周 / 每周 50–55 小时 / 累计约 620 小时 / 每天约 9 小时 × 每周 6 天（周日强制休息）。W2 主题为 LLM API 核心，交付六槽位 prompt 对比表与结构化输出修复率 ≥95%，W5 为评测与可靠性，交付评测报告 v1。"
-PROMPT_TEST3 ="烙画 / 针刺双路线定位与产品结构：烙画做 IP 人物有一个天然死穴：烙铁头太粗，五官容易糊。葫芦表面是弧面，烙铁笔头接触面积大、温度又不好压到极精细，市面上烙画葫芦基本都是山水、花鸟、写意人物，几乎没人敢做精细的现代 IP 角色，不是不想，是工艺做不到。"
+PROMPT_TEST2 = "FDE-执行02-12周日程总表：全职压缩版：12 周 / 每周 50–55 小时 / 累计约 620 小时 / 每天约 9 小时 × 每周 6 天（周日强制休息）。W2 主题为 LLM API 核心，交付六槽位 prompt 对比表与结构化输出修复率 ≥95%，W5 为评测与可靠性，交付评测报告 v1。"
+PROMPT_TEST3 = "烙画 / 针刺双路线定位与产品结构：烙画做 IP 人物有一个天然死穴：烙铁头太粗，五官容易糊。葫芦表面是弧面，烙铁笔头接触面积大、温度又不好压到极精细，市面上烙画葫芦基本都是山水、花鸟、写意人物，几乎没人敢做精细的现代 IP 角色，不是不想，是工艺做不到。"
 PROMPT_TEST4 = "ZFC足球队财务报表系统架构与运维手册：ZFC足球队财务报表系统由 Excel 数据源 + 静态 HTML 展示页 + Cloudflare Pages 部署三部分组成。日常更新流程为：openpyxl 修改 Excel → Python 读取 Excel 生成 HTML → wrangler 部署到 football-finance 项目 → finance.hululugarden.com 生效。"
-PROMPT_TEST5="Java 后端学习计划：12 周 / 每周 40 小时，W1-W4 Spring Boot，W5-W8 MySQL 与 Redis，W9-W12 微服务与分布式，每周学习 6 天，周日休息，最终目标是能独立开发电商后端。"
-PROMPT_TEST6="向量数据库选型指南：Milvus、Qdrant、Weaviate 都支持 ANN 检索，选型时重点看数据规模、召回率要求和部署成本，大模型应用接入前建议先用基准数据集测召回。"
-PROMPT_TEST7="微信小程序开发教程：先用 wx.request 封装统一网络层，再写云函数处理业务逻辑，上线前记得在微信公众平台配置合法域名和体验版权限。"
-PROMPT_TEST8="男方孕前检查记录与结论：在朝阳医院常营院区完成精液分析和传染病筛查，各项指标正常，医生建议提前三个月补充叶酸、戒烟酒，复查周期为半年一次。"
-PROMPT_TEST9="iPhone 代理客户端配置索引：Karing 与 sing-box 在 iOS 上的配置要点，包括节点订阅导入、分流规则设置和 MTU 调优，整理用于 iPhone 端代理客户端的日常运维。"
+PROMPT_TEST5 = "Java 后端学习计划：12 周 / 每周 40 小时，W1-W4 Spring Boot，W5-W8 MySQL 与 Redis，W9-W12 微服务与分布式，每周学习 6 天，周日休息，最终目标是能独立开发电商后端。"
+PROMPT_TEST6 = "向量数据库选型指南：Milvus、Qdrant、Weaviate 都支持 ANN 检索，选型时重点看数据规模、召回率要求和部署成本，大模型应用接入前建议先用基准数据集测召回。"
+PROMPT_TEST7 = "微信小程序开发教程：先用 wx.request 封装统一网络层，再写云函数处理业务逻辑，上线前记得在微信公众平台配置合法域名和体验版权限。"
+PROMPT_TEST8 = "男方孕前检查记录与结论：在朝阳医院常营院区完成精液分析和传染病筛查，各项指标正常，医生建议提前三个月补充叶酸、戒烟酒，复查周期为半年一次。"
+PROMPT_TEST9 = "iPhone 代理客户端配置索引：Karing 与 sing-box 在 iOS 上的配置要点，包括节点订阅导入、分流规则设置和 MTU 调优，整理用于 iPhone 端代理客户端的日常运维。"
 
-SYSTEM_PROMPT= """1.角色与边界，是一个知识库入库的分类员，只管理分类情况，不评论内容的质量的好坏。 
+SYSTEM_PROMPT = """1.角色与边界，是一个知识库入库的分类员，只管理分类情况，不评论内容的质量的好坏。 
 2.任务定义：输入标题和摘要，输出主题+置信度+理由。
 3.主题词表：
 fde：腾讯云 FDE 认证备考相关内容，包括周计划、日程总表、评测标准、交付物。
