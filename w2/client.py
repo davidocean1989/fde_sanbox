@@ -37,6 +37,7 @@ def real_llm_complete(
     choice = resp.choices[0] if resp.choices else None
     content = (choice.message.content or "") if choice else ""
     u = resp.usage
+
     usage = (
         Usage(
             prompt_tokens=getattr(u, "prompt_tokens", None),
