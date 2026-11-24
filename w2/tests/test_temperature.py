@@ -1,10 +1,11 @@
 """温度漂移分析模块的单测：判据、去重、阳性对照、控制变量、结论输出。"""
+
 from pathlib import Path
 
 from pricing import T9_MODELS
 from temperature import (
-    TEMPERATURES,
     BOUNDARY_PROBES,
+    TEMPERATURES,
     analyze,
     collect,
     extract_temperature,
@@ -21,9 +22,11 @@ def row(model, pid, t, topic, *, tag=None, with_temp=True, **kw):
     """造一行落盘记录。with_temp=False 模拟老批次（无 temperature 字段）。"""
     r = {
         "llm_model": model,
-        "run_tag": tag
-        if tag is not None
-        else (f"{model}/t9" if t == 0.0 else f"{model}/temp{t}"),
+        "run_tag": (
+            tag
+            if tag is not None
+            else (f"{model}/t9" if t == 0.0 else f"{model}/temp{t}")
+        ),
         "probe_id": pid,
         "final_ok": True,
         "repair_count": 0,
@@ -68,10 +71,12 @@ def test_resolve_model_strips_both_tag_suffixes():
 
 def test_collect_dedup_keeps_last_like_pricing():
     """追加写导致同 (model, probe, temp) 多行时，保留最后一次。"""
-    grid = collect([
-        row(DS, 5, 0.0, "public"),
-        row(DS, 5, 0.0, "unknown"),  # 重跑覆盖
-    ])
+    grid = collect(
+        [
+            row(DS, 5, 0.0, "public"),
+            row(DS, 5, 0.0, "unknown"),  # 重跑覆盖
+        ]
+    )
     assert grid[(DS, 5)][0.0]["output"]["topic"] == "unknown"
 
 
@@ -159,8 +164,11 @@ def test_print_report_warns_when_nothing_comparable(capsys):
 
 def test_dirty_old_batch_never_yields_a_routing_conclusion(capsys):
     """老批次无 temperature 字段被兜成 0.0：绝不能拿它下主力分工结论。"""
-    rows = [row(m, pid, 0.0, "hulu", tag=f"{m}/t9", with_temp=False)
-            for m in T9_MODELS for pid in range(20)]
+    rows = [
+        row(m, pid, 0.0, "hulu", tag=f"{m}/t9", with_temp=False)
+        for m in T9_MODELS
+        for pid in range(20)
+    ]
     a = print_temperature_report(rows=rows, gold_path=NO_GOLD)
     out = capsys.readouterr().out
     assert a["temp_field_missing"] == 80

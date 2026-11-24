@@ -211,21 +211,29 @@ def print_report(rows: list[dict] | None = None, path: Path = Path("probes.jsonl
             f"{d['lat_mean_ms']:>9.0f}{d['lat_p95_ms']:>9.0f}"
         )
         unpriced = [m for m in T9_MODELS if MODEL_PRICING.get(m) is None]
-        print("-" * 96)
-        if unpriced:
-            print(f"⚠ 单价未核对，成本列 n/a：{', '.join(unpriced)}")
-            print(
-                "  到 cloud.siliconflow.cn/models 查价后填入 MODEL_PRICING；价格是分析时维度，"
-            )
-            print("  改完直接 python pricing.py 重算即可，不用重跑实验。")
-        print("口径：单条均价 = (Σprompt×P_in + Σcompletion×P_out)/1000；")
-        print("      正确率对照 gold.json；P95 取排序后 ceil(0.95×N)-1，不是均值。")
+    print("-" * 96)
+    if unpriced:
+        print(f"⚠ 单价未核对，成本列 n/a：{', '.join(unpriced)}")
         print(
-            "⚠ 四档统一关闭推理模式（enable_thinking=False，见 client.py），模型档位仍是唯一自变量。"
+            "  到 cloud.siliconflow.cn/models 查价后填入 MODEL_PRICING；价格是分析时维度，"
         )
-        print("⚠ T9 是强 prompt 下的乐观下界：生产需乘 (1+E[修复次数])，回喂见 T10。")
-        print(
-            "⚠ acc / unknown / 1st-pass 属质量表：格式一次通过率是控制变量校验列，不参与排名。"
-        )
-        print("=" * 96 + "\n")
-        return s
+    print("  改完直接 python pricing.py 重算即可，不用重跑实验。")
+    print("口径：单条均价 = (Σprompt×P_in + Σcompletion×P_out)/1000；")
+    print("      正确率对照 gold.json；P95 取排序后 ceil(0.95×N)-1，不是均值。")
+    print(
+        "⚠ 四档统一关闭推理模式（enable_thinking=False，见 client.py），模型档位仍是唯一自变量。"
+    )
+    print("⚠ T9 是强 prompt 下的乐观下界：生产需乘 (1+E[修复次数])，回喂见 T10。")
+    print(
+        "⚠ acc / unknown / 1st-pass 属质量表：格式一次通过率是控制变量校验列，不参与排名。"
+    )
+    print("=" * 96 + "\n")
+    return s
+
+
+def main():
+    print_report(path=Path("probes.jsonl"))
+
+
+if __name__ == "__main__":
+    main()

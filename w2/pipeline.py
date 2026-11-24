@@ -1,14 +1,18 @@
-import time, json, shutil
-from dataclasses import dataclass, asdict
+import json
+import shutil
+import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Callable
 from pathlib import Path
-from pydantic import ValidationError
-from parse import parse, ParseError
-from prompts import SYSTEM_PROMPT, RETRY_HINT, BARE_PROMPT, SYSTEM_PROMPT_HASH
-from client import real_llm_complete  # 真 API 客户端，网络层重试归它管
+from typing import Callable
+
+# from client import real_llm_complete  # 真 API 客户端，网络层重试归它管
 from contracts import LLMResult, sum_usage
+from parse import ParseError, parse
 from pricing import print_report  # 跑完自动出成本对比表，零依赖、不触发 API
+from prompts import RETRY_HINT, SYSTEM_PROMPT, SYSTEM_PROMPT_HASH  # ,BARE_PROMPT,
+
+# from pydantic import ValidationError
 from temperature import TEMPERATURES, print_temperature_report
 
 PROBES_PATH = Path("probes.json")
@@ -42,7 +46,7 @@ class Result:
     temperature: float = 0.0  # 自变量之一：0 主实验 / 0.3 / 0.8 温度验证
 
 
-class RepaireExhausted(Exception):
+class RepairExhausted(Exception):
     """带着失败记录抛出去：失败的那一行也必须落盘"""
 
     def __init__(self, result: Result):
@@ -116,7 +120,7 @@ def extract_one(
             temperature=temperature,
             **_token_fields(usage_log),
         )
-    raise RepaireExhausted(
+    raise RepairExhausted(
         Result(  # 出口 3：耗尽，绝不 return None
             llm_model=llm_model,
             run_tag=run_tag,
@@ -146,9 +150,7 @@ def _archive_and_reset() -> None:
     if not OUT_PATH.exists() or OUT_PATH.stat().st_size == 0:
         print(f"[{OUT_PATH}] 已是空文件，无需留档。")
         return
-    n = sum(
-        1 for l in OUT_PATH.read_text(encoding="utf-8").splitlines() if l.strip()
-    )
+    n = sum(1 for l in OUT_PATH.read_text(encoding="utf-8").splitlines() if l.strip())
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     archive = OUT_PATH.with_name(f"probes_archive_{stamp}.jsonl")
     i = 1
@@ -156,15 +158,13 @@ def _archive_and_reset() -> None:
         archive = OUT_PATH.with_name(f"probes_archive_{stamp}_{i}.jsonl")
         i += 1
     shutil.copy(OUT_PATH, archive)
-    m = sum(
-        1 for l in archive.read_text(encoding="utf-8").splitlines() if l.strip()
-    )
+    m = sum(1 for l in archive.read_text(encoding="utf-8").splitlines() if l.strip())
     if m != n:
-        raise RuntimeError(
-            f"留档校验失败：源 {n} 行 / 档 {m} 行，拒绝清空 {OUT_PATH}"
-        )
+        raise RuntimeError(f"留档校验失败：源 {n} 行 / 档 {m} 行，拒绝清空 {OUT_PATH}")
     OUT_PATH.write_text("", encoding="utf-8")
-    print(f"[{OUT_PATH}] 已留档 {n} 行 → {archive.name}，随后清空，本次从干净文件起跑。")
+    print(
+        f"[{OUT_PATH}] 已留档 {n} 行 → {archive.name}，随后清空，本次从干净文件起跑。"
+    )
 
 
 def main(
@@ -187,7 +187,7 @@ def main(
                 run_tag=run_tag,
                 temperature=temperature,
             )
-        except RepaireExhausted as e:
+        except RepairExhausted as e:
             result = e.result
         grand_total_tokens += result.total_tokens
         _write(result)
@@ -216,13 +216,13 @@ if __name__ == "__main__":
     # ⚠ 换档 / 换温度必须整批重跑，不能只补一批：只补会造成 A/B 批次混淆，正确率不可比。
     # ⚠ Hy4 于 2026-11-20 剔除（推理模型跑短分类属任务错配，非「数据难看」），
     #   旧 80 行留档 probes_t9_20261120_with_hy4.jsonl，W5 报告引用它说明剔除理由。
-    from config import (
-        SILICONFLOW_MODEL_QWEN7B,
-        SILICONFLOW_MODEL_GLM45AIR,
-        SILICONFLOW_MODEL_DEEPSEEK,
-        SILICONFLOW_MODEL_QWEN,
-    )
     from client import make_llm_complete
+    from config import (
+        SILICONFLOW_MODEL_DEEPSEEK,
+        SILICONFLOW_MODEL_GLM45AIR,
+        SILICONFLOW_MODEL_QWEN,
+        SILICONFLOW_MODEL_QWEN7B,
+    )
 
     MODEL_ORDER = (
         SILICONFLOW_MODEL_QWEN7B,  # 免费档 7B

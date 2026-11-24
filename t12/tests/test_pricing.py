@@ -1,13 +1,14 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from pricing import (
     MODEL_PRICING,
-    T9_MODELS,
-    PRICE_UNIT,
     PRICE_DIVISOR,
+    PRICE_UNIT,
+    T9_MODELS,
     cost,
-    row_cost,
     resolve_model,
+    row_cost,
     summarize,
 )
 

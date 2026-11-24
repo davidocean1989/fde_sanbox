@@ -192,14 +192,16 @@ if __name__ == "__main__":
     from client import make_llm_complete
     from config import (
         SILICONFLOW_MODEL_DEEPSEEK,
-        SILICONFLOW_MODEL_GLE45AIR,
+        SILICONFLOW_MODEL_GLM45AIR,
+        SILICONFLOW_MODEL_QWEN7B,
         SILICONFLOW_MODEL_QWEN72B,
     )
 
     MODEL_ORDER = (
-        SILICONFLOW_MODEL_DEEPSEEK,
-        SILICONFLOW_MODEL_QWEN72B,
-        SILICONFLOW_MODEL_GLE45AIR,
+        SILICONFLOW_MODEL_QWEN7B,  # 免费档 7B
+        SILICONFLOW_MODEL_GLM45AIR,  # 106B MoE，thinking 已统一关闭
+        SILICONFLOW_MODEL_DEEPSEEK,  # 671B MoE
+        SILICONFLOW_MODEL_QWEN72B,  # 72B 稠密
     )
 
     n_probes = len(json.loads(PROBES_PATH.read_text(encoding="utf-8")))

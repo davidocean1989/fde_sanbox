@@ -12,6 +12,7 @@
 - temperature=0 不保证跨批次复现（已实证独立运行差 1~2 条 = 5~10pt）。
   三温同一进程内连跑消除了「批次」变量，但 20 条里 1 条 = 5pt，仍不能把 5pt 当强结论。
 """
+
 from __future__ import annotations
 
 import json
@@ -47,7 +48,9 @@ def _read_jsonl(path: Path) -> list[dict]:
 def _load_gold(path: Path) -> dict[int, str]:
     if not Path(path).exists():
         return {}
-    return {int(k): v for k, v in json.loads(Path(path).read_text(encoding="utf-8")).items()}
+    return {
+        int(k): v for k, v in json.loads(Path(path).read_text(encoding="utf-8")).items()
+    }
 
 
 def extract_temperature(row: dict) -> float:
@@ -215,9 +218,10 @@ def print_temperature_report(
         f"  0 → 0.3 变化 {a['drift_03']} 条 | "
         f"0 → 0.8 变化 {a['drift_08']} 条（阳性对照）"
     )
-    print("  分档漂移：" + " | ".join(
-        f"{_SHORT[m]} {a['drift_by_model'].get(m, 0)}" for m in T9_MODELS
-    ))
+    print(
+        "  分档漂移："
+        + " | ".join(f"{_SHORT[m]} {a['drift_by_model'].get(m, 0)}" for m in T9_MODELS)
+    )
 
     # 表 C：漂移明细
     print("-" * 100)
@@ -258,7 +262,9 @@ def print_temperature_report(
     print("【自动结论】")
     if a["complete"] == 0:
         print("  ⚠ 没有任何题目凑齐三档温度，无法判定漂移。")
-        print("     检查三档是否都跑完、run_tag 是否带温度后缀、temperature 字段是否落盘。")
+        print(
+            "     检查三档是否都跑完、run_tag 是否带温度后缀、temperature 字段是否落盘。"
+        )
     elif a["drift_08"] == 0:
         print("  ⚠ 阳性对照未触发：0.8 相对 0 一条都没漂。20 条样本对温度不敏感，")
         print("     「正确率 / 漂移率」指标没有区分度，不能拿 5pt 差距外推；")

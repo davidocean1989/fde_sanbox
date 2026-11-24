@@ -18,9 +18,10 @@ def real_llm_complete(
     started = time.perf_counter()
     resp = _client.chat.completions.create(
         model=model_name,
+        timeout=30,
         messages=messages,
         temperature=temperature,
-        max_tokens=5000,
+        max_tokens=2000,
         extra_body={"enable_thinking": False},
     )
     # 逐字段兜底：choices 可能为空，content 可能是 None ，usage 可能整个缺失
